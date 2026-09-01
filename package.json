@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Webhook da Wanessa (Lens.AI) para WhatsApp Cloud API + Claude API",
   "dependencies": {
-    "googleapis": "^144.0.0"
+    "googleapis": "^144.0.0",
+    "@upstash/qstash": "^2.7.17"
   }
 }
