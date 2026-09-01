@@ -1,0 +1,8 @@
+{
+  "name": "wanessa-webhook",
+  "version": "1.0.0",
+  "description": "Webhook da Wanessa (Lens.AI) para WhatsApp Cloud API + Claude API",
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}
