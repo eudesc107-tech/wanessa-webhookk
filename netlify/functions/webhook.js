@@ -1,6 +1,6 @@
 const { askWanessa } = require('../../lib/claude');
 const { markAsRead, notifyReceptionist } = require('../../lib/whatsapp');
-const { agendarEnvio } = require('../../lib/qstash');
+const { agendarEnvios } = require('../../lib/qstash');
 const { findPatient, upsertPatient } = require('../../lib/sheets');
 
 exports.handler = async (event) => {
@@ -53,11 +53,10 @@ exports.handler = async (event) => {
       // 5. Chama a Wanessa (Claude) com o histórico completo
       const resultado = await askWanessa(historico);
 
-      historico.push({ role: 'assistant', content: resultado.resposta });
+      historico.push({ role: 'assistant', content: resultado.mensagens.join(' ') });
 
-      // 6. Envia a resposta pro paciente
-      // 6. Agenda o envio da resposta com delay variável (simula digitação)
-      await agendarEnvio({ to: from, text: resultado.resposta });
+      // 6. Agenda o envio de cada mensagem da lista, em sequência, com delay
+      await agendarEnvios({ to: from, mensagens: resultado.mensagens });
       // 7. Atualiza a planilha
       const agora = new Date().toISOString();
       await upsertPatient(from, {
