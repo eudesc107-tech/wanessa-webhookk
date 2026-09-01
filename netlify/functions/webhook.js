@@ -33,7 +33,7 @@ exports.handler = async (event) => {
       const from = message.from; // telefone do paciente
       const contactName = change?.value?.contacts?.[0]?.profile?.name || '';
 
-      await markAsRead(message.id);
+      await markAsRead(message.id, { typing: true });
 
       // 3. Extrai o texto da mensagem (trata áudio como caso especial)
       let userText;
@@ -56,8 +56,8 @@ exports.handler = async (event) => {
       historico.push({ role: 'assistant', content: resultado.resposta });
 
       // 6. Envia a resposta pro paciente
-      await sendText(from, resultado.resposta);
-
+      // 6. Agenda o envio da resposta com delay variável (simula digitação)
+      await agendarEnvio({ to: from, text: resultado.resposta });
       // 7. Atualiza a planilha
       const agora = new Date().toISOString();
       await upsertPatient(from, {
