@@ -3,6 +3,10 @@ const { markAsRead, notifyReceptionist } = require('../../lib/whatsapp');
 const { agendarEnvios } = require('../../lib/qstash');
 const { findPatient, upsertPatient } = require('../../lib/sheets');
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 exports.handler = async (event) => {
   // 1. Verificação do webhook (Meta chama com GET na hora de configurar)
   if (event.httpMethod === 'GET') {
@@ -33,6 +37,10 @@ exports.handler = async (event) => {
       const from = message.from; // telefone do paciente
       const contactName = change?.value?.contacts?.[0]?.profile?.name || '';
 
+      // Pequena pausa antes de "notar" a mensagem, pra não parecer que
+      // já estava com o dedo em cima do teclado esperando.
+      const delayLeitura = 1000 + Math.floor(Math.random() * 1500); // 1 a 2.5s
+      await sleep(delayLeitura);
       await markAsRead(message.id, { typing: true });
 
       // 3. Extrai o texto da mensagem (trata áudio como caso especial)
@@ -57,6 +65,7 @@ exports.handler = async (event) => {
 
       // 6. Agenda o envio de cada mensagem da lista, em sequência, com delay
       await agendarEnvios({ to: from, mensagens: resultado.mensagens });
+
       // 7. Atualiza a planilha
       const agora = new Date().toISOString();
       await upsertPatient(from, {
