@@ -1,5 +1,6 @@
 const { askWanessa } = require('../../lib/claude');
-const { sendText, markAsRead, notifyReceptionist } = require('../../lib/whatsapp');
+const { markAsRead, notifyReceptionist } = require('../../lib/whatsapp');
+const { agendarEnvio } = require('../../lib/qstash');
 const { findPatient, upsertPatient } = require('../../lib/sheets');
 
 exports.handler = async (event) => {
