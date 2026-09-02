@@ -68,8 +68,11 @@ exports.handler = async (event) => {
         followupEnviado: '', // paciente respondeu, reseta o controle de follow-up
       });
 
-      // 8. Se fechou agendamento, notifica a recepcionista
-      if (resultado.status === 'agendado' && resultado.agendamento) {
+      // 8. Só notifica se for um agendamento NOVO (o paciente ainda não
+      // estava com status "agendado" antes dessa mensagem). Evita notificar
+      // de novo quando ele só agradece ou confirma depois.
+      const eraAgendadoAntes = existing?.status === 'agendado';
+      if (resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes) {
         await notifyReceptionist({
           patientName: existing?.nome || contactName,
           patientPhone: from,
