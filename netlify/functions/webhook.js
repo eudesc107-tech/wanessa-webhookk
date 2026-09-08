@@ -2,9 +2,9 @@ const { askWanessa } = require('../../lib/claude');
 const { markAsRead, notifyReceptionist } = require('../../lib/whatsapp');
 const { agendarEnvios } = require('../../lib/qstash');
 const { findPatient, upsertPatient } = require('../../lib/sheets');
+const { transcreverAudio } = require('../../lib/transcribe');
 
 exports.handler = async (event) => {
-  // 1. Verificação do webhook (Meta chama com GET na hora de configurar)
   if (event.httpMethod === 'GET') {
     const params = event.queryStringParameters || {};
     const mode = params['hub.mode'];
@@ -17,7 +17,6 @@ exports.handler = async (event) => {
     return { statusCode: 403, body: 'Token inválido' };
   }
 
-  // 2. Mensagem nova chegando (Meta chama com POST)
   if (event.httpMethod === 'POST') {
     try {
       const body = JSON.parse(event.body);
@@ -25,7 +24,6 @@ exports.handler = async (event) => {
       const change = entry?.changes?.[0];
       const message = change?.value?.messages?.[0];
 
-      // Meta também manda POSTs de status (entregue, lido), ignoramos esses
       if (!message) {
         return { statusCode: 200, body: 'ok' };
       }
@@ -35,8 +33,6 @@ exports.handler = async (event) => {
 
       await markAsRead(message.id, { typing: true });
 
-      // Reações (curtir, coraçãozinho, etc) e outros tipos que não são
-      // conversa de verdade: ignora completamente, não gera resposta.
       const tiposIgnorados = ['reaction', 'system', 'unsupported'];
       if (tiposIgnorados.includes(message.type)) {
         return { statusCode: 200, body: 'ignorado' };
@@ -46,7 +42,12 @@ exports.handler = async (event) => {
       if (message.type === 'text') {
         userText = message.text.body;
       } else if (message.type === 'audio') {
-        userText = '[o paciente mandou um áudio]';
+        try {
+          userText = await transcreverAudio(message.audio.id);
+        } catch (err) {
+          console.error('Erro ao transcrever áudio:', err);
+          userText = '[o paciente mandou um áudio, mas não foi possível transcrever]';
+        }
       } else {
         userText = `[o paciente mandou uma mensagem do tipo ${message.type}, não suportada ainda]`;
       }
@@ -61,8 +62,6 @@ exports.handler = async (event) => {
 
       await agendarEnvios({ to: from, mensagens: resultado.mensagens });
 
-      // Se o paciente já estava "agendado" e essa mensagem nova é só uma
-      // conversa de rotina, mantém o status de agendado em vez de sobrescrever.
       const eraAgendadoAntes = existing?.status === 'agendado';
       let statusFinal = resultado.status;
       if (eraAgendadoAntes && resultado.status === 'em_conversa') {
@@ -78,9 +77,6 @@ exports.handler = async (event) => {
         followupEnviado: '',
       };
 
-      // Se fechou um agendamento NOVO agora, salva os detalhes dele e
-      // reseta o controle de confirmação (pra função de confirmação de
-      // presença saber que precisa avisar mais perto da data).
       const ehAgendamentoNovo = resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes;
       if (ehAgendamentoNovo) {
         camposParaSalvar.agendamentoData = resultado.agendamento.data || '';
@@ -103,7 +99,6 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'ok' };
     } catch (err) {
       console.error('Erro no webhook da Wanessa:', err);
-      // Retorna 200 mesmo em erro pra Meta não ficar reenviando o mesmo evento
       return { statusCode: 200, body: 'erro tratado' };
     }
   }
