@@ -25,6 +25,7 @@ exports.handler = async (event) => {
       const change = entry?.changes?.[0];
       const message = change?.value?.messages?.[0];
 
+      // Meta também manda POSTs de status (entregue, lido), ignoramos esses
       if (!message) {
         return { statusCode: 200, body: 'ok' };
       }
@@ -33,6 +34,13 @@ exports.handler = async (event) => {
       const contactName = change?.value?.contacts?.[0]?.profile?.name || '';
 
       await markAsRead(message.id, { typing: true });
+
+      // Reações (curtir, coraçãozinho, etc) e outros tipos que não são
+      // conversa de verdade: ignora completamente, não gera resposta.
+      const tiposIgnorados = ['reaction', 'system', 'unsupported'];
+      if (tiposIgnorados.includes(message.type)) {
+        return { statusCode: 200, body: 'ignorado' };
+      }
 
       let userText;
       if (message.type === 'text') {
@@ -95,6 +103,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'ok' };
     } catch (err) {
       console.error('Erro no webhook da Wanessa:', err);
+      // Retorna 200 mesmo em erro pra Meta não ficar reenviando o mesmo evento
       return { statusCode: 200, body: 'erro tratado' };
     }
   }
