@@ -25,17 +25,15 @@ exports.handler = async (event) => {
       const change = entry?.changes?.[0];
       const message = change?.value?.messages?.[0];
 
-      // Meta também manda POSTs de status (entregue, lido), ignoramos esses
       if (!message) {
         return { statusCode: 200, body: 'ok' };
       }
 
-      const from = message.from; // telefone do paciente
+      const from = message.from;
       const contactName = change?.value?.contacts?.[0]?.profile?.name || '';
 
       await markAsRead(message.id, { typing: true });
 
-      // 3. Extrai o texto da mensagem (trata áudio como caso especial)
       let userText;
       if (message.type === 'text') {
         userText = message.text.body;
@@ -45,34 +43,48 @@ exports.handler = async (event) => {
         userText = `[o paciente mandou uma mensagem do tipo ${message.type}, não suportada ainda]`;
       }
 
-      // 4. Busca o histórico do paciente na planilha
       const existing = await findPatient(from);
       const historico = existing?.historico || [];
       historico.push({ role: 'user', content: userText });
 
-      // 5. Chama a Wanessa (Claude) com o histórico completo
       const resultado = await askWanessa(historico);
 
       historico.push({ role: 'assistant', content: resultado.mensagens.join(' ') });
 
-      // 6. Agenda o envio de cada mensagem da lista, em sequência, com delay
       await agendarEnvios({ to: from, mensagens: resultado.mensagens });
 
-      // 7. Atualiza a planilha
+      // Se o paciente já estava "agendado" e essa mensagem nova é só uma
+      // conversa de rotina, mantém o status de agendado em vez de sobrescrever.
+      const eraAgendadoAntes = existing?.status === 'agendado';
+      let statusFinal = resultado.status;
+      if (eraAgendadoAntes && resultado.status === 'em_conversa') {
+        statusFinal = 'agendado';
+      }
+
       const agora = new Date().toISOString();
-      await upsertPatient(from, {
+      const camposParaSalvar = {
         nome: existing?.nome || contactName,
-        status: resultado.status,
+        status: statusFinal,
         historico,
         ultimaMensagemPaciente: agora,
-        followupEnviado: '', // paciente respondeu, reseta o controle de follow-up
-      });
+        followupEnviado: '',
+      };
 
-      // 8. Só notifica se for um agendamento NOVO (o paciente ainda não
-      // estava com status "agendado" antes dessa mensagem). Evita notificar
-      // de novo quando ele só agradece ou confirma depois.
-      const eraAgendadoAntes = existing?.status === 'agendado';
-      if (resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes) {
+      // Se fechou um agendamento NOVO agora, salva os detalhes dele e
+      // reseta o controle de confirmação (pra função de confirmação de
+      // presença saber que precisa avisar mais perto da data).
+      const ehAgendamentoNovo = resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes;
+      if (ehAgendamentoNovo) {
+        camposParaSalvar.agendamentoData = resultado.agendamento.data || '';
+        camposParaSalvar.agendamentoHorario = resultado.agendamento.horario || '';
+        camposParaSalvar.agendamentoProcedimento = resultado.agendamento.procedimento || '';
+        camposParaSalvar.agendamentoMotivo = resultado.agendamento.motivo || '';
+        camposParaSalvar.confirmacaoEnviada = '';
+      }
+
+      await upsertPatient(from, camposParaSalvar);
+
+      if (ehAgendamentoNovo) {
         await notifyReceptionist({
           patientName: existing?.nome || contactName,
           patientPhone: from,
@@ -83,7 +95,6 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'ok' };
     } catch (err) {
       console.error('Erro no webhook da Wanessa:', err);
-      // Retorna 200 mesmo em erro pra Meta não ficar reenviando o mesmo evento
       return { statusCode: 200, body: 'erro tratado' };
     }
   }
