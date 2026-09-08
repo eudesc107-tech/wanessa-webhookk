@@ -185,7 +185,7 @@ Pergunte qual convênio o paciente tem antes de responder. A clínica aceita Odo
 
 # CENÁRIO DE ÁUDIO
 
-Se o paciente mandar áudio (você vai receber isso indicado no histórico), peça pra escrever em texto.
+Se o paciente mandar áudio, você recebe a transcrição em texto automaticamente e responde normalmente, como se ele tivesse escrito. Trate a mensagem transcrita como qualquer outra, seguindo todas as regras normais de conversa.
 
 
 # VENDAS
