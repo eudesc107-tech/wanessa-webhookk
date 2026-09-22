@@ -1,8 +1,7 @@
 const { askWanessa } = require('../../lib/claude');
 const { markAsRead, notifyReceptionist } = require('../../lib/whatsapp');
 const { agendarEnvios } = require('../../lib/qstash');
-const { findPatient, upsertPatient } = require('../../lib/sheets');
-const { transcreverAudio } = require('../../lib/transcribe');
+const { findPatient, upsertPatient, getHorariosOcupados } = require('../../lib/sheets');
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'GET') {
@@ -43,6 +42,7 @@ exports.handler = async (event) => {
         userText = message.text.body;
       } else if (message.type === 'audio') {
         try {
+          const { transcreverAudio } = require('../../lib/transcribe');
           userText = await transcreverAudio(message.audio.id);
         } catch (err) {
           console.error('Erro ao transcrever áudio:', err);
@@ -56,13 +56,41 @@ exports.handler = async (event) => {
       const historico = existing?.historico || [];
       historico.push({ role: 'user', content: userText });
 
-      const resultado = await askWanessa(historico);
+      // Busca os horários já ocupados por outros pacientes, pra Wanessa
+      // saber o que evitar antes de oferecer ou confirmar qualquer coisa.
+      const ocupados = await getHorariosOcupados();
+
+      const resultado = await askWanessa(historico, ocupados);
+
+      const eraAgendadoAntes = existing?.status === 'agendado';
+      let ehAgendamentoNovo = resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes;
+
+      // TRAVA DE SEGURANÇA: mesmo que a Wanessa tenha sido avisada, confere
+      // de novo aqui se o horário que ela fechou não colidiu com outro
+      // paciente (cobre o caso raro de duas pessoas agendando quase juntas).
+      if (ehAgendamentoNovo) {
+        const conflito = ocupados.find(
+          (o) => o.data === resultado.agendamento.data
+            && o.horario === resultado.agendamento.horario
+            && o.telefone !== from
+        );
+
+        if (conflito) {
+          console.warn('Conflito de horário detectado, revertendo agendamento:', resultado.agendamento);
+          resultado.mensagens = [
+            'Peraí, parece que esse horário acabou de ser ocupado por outro paciente.',
+            'Consegue me passar outro dia ou horário que eu já vejo a disponibilidade certinha pra você?',
+          ];
+          resultado.status = 'em_conversa';
+          resultado.agendamento = null;
+          ehAgendamentoNovo = false;
+        }
+      }
 
       historico.push({ role: 'assistant', content: resultado.mensagens.join(' ') });
 
       await agendarEnvios({ to: from, mensagens: resultado.mensagens });
 
-      const eraAgendadoAntes = existing?.status === 'agendado';
       let statusFinal = resultado.status;
       if (eraAgendadoAntes && resultado.status === 'em_conversa') {
         statusFinal = 'agendado';
@@ -77,7 +105,6 @@ exports.handler = async (event) => {
         followupEnviado: '',
       };
 
-      const ehAgendamentoNovo = resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes;
       if (ehAgendamentoNovo) {
         camposParaSalvar.agendamentoData = resultado.agendamento.data || '';
         camposParaSalvar.agendamentoHorario = resultado.agendamento.horario || '';
