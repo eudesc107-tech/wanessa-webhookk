@@ -3,9 +3,3 @@
 
 [functions]
   node_bundler = "esbuild"
-
-[functions."followup-check"]
-  schedule = "@hourly"
-
-[functions."confirm-appointments"]
-  schedule = "@hourly"
