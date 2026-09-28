@@ -1,4 +1,5 @@
 [build]
+  publish = "painel"
   functions = "netlify/functions"
 
 [functions]
