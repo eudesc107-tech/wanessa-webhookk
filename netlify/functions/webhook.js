@@ -60,15 +60,34 @@ exports.handler = async (event) => {
       // saber o que evitar antes de oferecer ou confirmar qualquer coisa.
       const ocupados = await getHorariosOcupados();
 
-      const resultado = await askWanessa(historico, ocupados);
+      // A Wanessa também recebe a situação real do contato (já é paciente,
+      // tem consulta marcada, faltou) direto da planilha da clínica.
+      const resultado = await askWanessa(historico, ocupados, existing);
 
-      const eraAgendadoAntes = existing?.status === 'agendado';
-      let ehAgendamentoNovo = resultado.status === 'agendado' && resultado.agendamento && !eraAgendadoAntes;
+      const hojeISO = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Recife' });
+
+      // Existe uma consulta marcada que a recepção ainda não resolveu
+      // (nem "compareceu", nem "faltou")?
+      const agendamentoPendente = existing?.status === 'agendado' && !!existing?.agendamentoData;
+
+      // Essa consulta ainda vai acontecer (hoje ou depois)?
+      const agendamentoAindaVale = agendamentoPendente && existing.agendamentoData >= hojeISO;
+
+      const quisAgendar = resultado.status === 'agendado' && !!resultado.agendamento;
+
+      // Agendamento novo: quem não tinha nenhuma consulta futura marcada.
+      let ehAgendamentoNovo = quisAgendar && !agendamentoAindaVale;
+
+      // Remarcação: quem já tinha consulta futura e fechou outro dia ou horário.
+      let ehRemarcacao = quisAgendar && agendamentoAindaVale && (
+        resultado.agendamento.data !== existing.agendamentoData ||
+        resultado.agendamento.horario !== existing.agendamentoHorario
+      );
 
       // TRAVA DE SEGURANÇA: mesmo que a Wanessa tenha sido avisada, confere
       // de novo aqui se o horário que ela fechou não colidiu com outro
       // paciente (cobre o caso raro de duas pessoas agendando quase juntas).
-      if (ehAgendamentoNovo) {
+      if (ehAgendamentoNovo || ehRemarcacao) {
         const conflito = ocupados.find(
           (o) => o.data === resultado.agendamento.data
             && o.horario === resultado.agendamento.horario
@@ -84,6 +103,7 @@ exports.handler = async (event) => {
           resultado.status = 'em_conversa';
           resultado.agendamento = null;
           ehAgendamentoNovo = false;
+          ehRemarcacao = false;
         }
       }
 
@@ -91,9 +111,16 @@ exports.handler = async (event) => {
 
       await agendarEnvios({ to: from, mensagens: resultado.mensagens });
 
+      // Conversa de rotina não pode apagar o que a clínica já sabe do paciente:
+      // consulta ainda não resolvida continua "agendado", e quem já foi
+      // atendido continua "atendido" (e não vira lead de novo).
       let statusFinal = resultado.status;
-      if (eraAgendadoAntes && resultado.status === 'em_conversa') {
-        statusFinal = 'agendado';
+      if (resultado.status === 'em_conversa') {
+        if (agendamentoPendente) {
+          statusFinal = 'agendado';
+        } else if (existing?.status === 'atendido') {
+          statusFinal = 'atendido';
+        }
       }
 
       const agora = new Date().toISOString();
@@ -105,7 +132,9 @@ exports.handler = async (event) => {
         followupEnviado: '',
       };
 
-      if (ehAgendamentoNovo) {
+      const salvarAgendamento = ehAgendamentoNovo || ehRemarcacao;
+
+      if (salvarAgendamento) {
         camposParaSalvar.agendamentoData = resultado.agendamento.data || '';
         camposParaSalvar.agendamentoHorario = resultado.agendamento.horario || '';
         camposParaSalvar.agendamentoProcedimento = resultado.agendamento.procedimento || '';
@@ -115,11 +144,12 @@ exports.handler = async (event) => {
 
       await upsertPatient(from, camposParaSalvar);
 
-      if (ehAgendamentoNovo) {
+      if (salvarAgendamento) {
         await notifyReceptionist({
           patientName: existing?.nome || contactName,
           patientPhone: from,
           agendamento: resultado.agendamento,
+          remarcado: ehRemarcacao,
         });
       }
 
