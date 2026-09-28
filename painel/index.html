@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#050505">
+<title>Agenda da clínica, Lens.AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #050505;
+    --panel: #0e0e12;
+    --line: rgba(255,255,255,0.13);
+    --white: #ffffff;
+    --grey: rgba(255,255,255,0.72);
+    --blue: #1E6BFF;
+    --blue-soft: rgba(30,107,255,0.18);
+    --amber: #FFB020;
+    --amber-soft: rgba(255,176,32,0.16);
+    --red: #FF7A7A;
+    --red-soft: rgba(255,122,122,0.16);
+    --green: #4ADE80;
+    --green-soft: rgba(74,222,128,0.16);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-weight: 500;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+
+  [hidden] { display: none !important; }
+
+  button { font-family: inherit; cursor: pointer; }
+
+  .marca { font-weight: 700; font-size: 20px; letter-spacing: 0.3px; }
+
+  /* ---------- LOGIN ---------- */
+  .login {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 36px 28px;
+  }
+  .login-card h1 { font-size: 26px; font-weight: 700; margin: 18px 0 8px; }
+  .login-card p { color: var(--grey); font-size: 15.5px; margin-bottom: 24px; }
+  .login-card input {
+    width: 100%;
+    background: #ffffff;
+    color: #0a0a0d;
+    border: none;
+    border-radius: 12px;
+    padding: 15px 16px;
+    font-size: 16px;
+    font-family: inherit;
+    margin-bottom: 14px;
+  }
+  .login-card input:focus { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .botao-principal {
+    width: 100%;
+    background: var(--blue);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-size: 16.5px;
+    font-weight: 700;
+  }
+  .botao-principal:disabled { opacity: 0.6; cursor: default; }
+  .erro { color: var(--red); font-size: 14.5px; margin-top: 14px; margin-bottom: 0 !important; }
+
+  /* ---------- TOPO ---------- */
+  .topo {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px;
+    background: rgba(5,5,5,0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .clinica { color: var(--grey); font-size: 14px; margin-top: 2px; }
+  .topo-acoes { display: flex; gap: 6px; }
+  .link-botao {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--white);
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  main { max-width: 720px; margin: 0 auto; padding: 22px 20px 90px; }
+
+  .atualizado { color: var(--grey); font-size: 13.5px; margin-bottom: 22px; }
+
+  /* ---------- SEÇÕES ---------- */
+  .secao { margin-bottom: 34px; }
+  .secao-cabeca { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .secao-titulo { font-size: 20px; font-weight: 700; }
+  .contador {
+    background: var(--blue-soft);
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 2px 11px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .contador.alerta { background: var(--amber-soft); color: var(--amber); }
+  .secao-ajuda { color: var(--grey); font-size: 14px; margin-bottom: 14px; }
+  .vazio-secao { color: var(--grey); font-size: 15px; padding: 6px 0 2px; }
+
+  /* ---------- CARTÕES ---------- */
+  .cartao {
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    gap: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .hora { font-size: 26px; font-weight: 700; line-height: 1; }
+  .data-pequena { font-size: 12.5px; color: var(--grey); margin-top: 7px; line-height: 1.3; }
+  .nome { font-size: 18px; font-weight: 700; word-break: break-word; }
+  .telefone { font-size: 13.5px; color: var(--grey); margin-top: 2px; }
+  .detalhe { font-size: 15px; color: var(--grey); margin-top: 8px; word-break: break-word; }
+  .detalhe strong { color: var(--white); font-weight: 600; }
+
+  .selos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .selo {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 3px 11px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+  .selo-paciente { background: var(--blue-soft); color: #ffffff; }
+  .selo-atendido { background: var(--green-soft); color: var(--green); }
+  .selo-faltou { background: var(--red-soft); color: var(--red); }
+  .selo-pendente { background: var(--amber-soft); color: var(--amber); }
+
+  .acoes { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; }
+  .botao {
+    flex: 1;
+    min-width: 130px;
+    min-height: 48px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .botao:disabled { opacity: 0.55; cursor: default; }
+  .botao-ok { background: var(--blue); color: #ffffff; }
+  .botao-falta { background: transparent; color: var(--red); border-color: rgba(255,122,122,0.5); }
+  .botao-desfazer { background: transparent; color: var(--white); border-color: var(--line); }
+
+  .falar {
+    grid-column: 1 / -1;
+    color: var(--grey);
+    font-size: 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .falar:hover { color: var(--white); }
+
+  /* ---------- ESTADO VAZIO GERAL ---------- */
+  .vazio-geral {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  }
+  .vazio-geral h2 { font-size: 22px; margin-bottom: 8px; }
+  .vazio-geral p { color: var(--grey); font-size: 15.5px; }
+
+  /* ---------- AVISO ---------- */
+  .aviso {
+    position: fixed;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+    background: #ffffff;
+    color: #0a0a0d;
+    padding: 13px 22px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 700;
+    z-index: 50;
+    max-width: 92vw;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<section id="tela-login" class="login" hidden>
+  <div class="login-card">
+    <div class="marca">Lens.AI</div>
+    <h1>Agenda da clínica</h1>
+    <p>Digite a senha pra ver os agendamentos.</p>
+    <form id="form-login">
+      <input type="password" id="senha" placeholder="Senha" autocomplete="current-password" required>
+      <button type="submit" id="botao-entrar" class="botao-principal">Entrar</button>
+      <p id="erro-login" class="erro" hidden></p>
+    </form>
+  </div>
+</section>
+
+<section id="tela-app" hidden>
+  <header class="topo">
+    <div>
+      <div class="marca">Lens.AI</div>
+      <div class="clinica" id="nome-clinica"></div>
+    </div>
+    <div class="topo-acoes">
+      <button type="button" id="botao-atualizar" class="link-botao">Atualizar</button>
+      <button type="button" id="botao-sair" class="link-botao">Sair</button>
+    </div>
+  </header>
+  <main>
+    <p id="atualizado" class="atualizado"></p>
+    <div id="conteudo"></div>
+  </main>
+</section>
+
+<div id="aviso" class="aviso" hidden></div>
+
+<script>
+  // Troque o nome aqui pra cada clínica nova.
+  const CLINICA_NOME = 'Clínica Sorriso Ideal';
+
+  const CHAVE_TOKEN = 'lensai_painel_token';
+  const API = '/.netlify/functions/painel-api';
+  const DIAS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+  let token = localStorage.getItem(CHAVE_TOKEN);
+  let carregando = false;
+  let temporizadorAviso = null;
+
+  const telaLogin = document.getElementById('tela-login');
+  const telaApp = document.getElementById('tela-app');
+  const conteudo = document.getElementById('conteudo');
+
+  // ---------- utilidades ----------
+
+  function criar(tag, classe, texto) {
+    const el = document.createElement(tag);
+    if (classe) el.className = classe;
+    if (texto !== undefined) el.textContent = texto;
+    return el;
+  }
+
+  function formatarData(iso) {
+    const partes = String(iso || '').split('-').map(Number);
+    if (partes.length !== 3 || partes.some(isNaN)) return iso || '';
+    const [ano, mes, dia] = partes;
+    const data = new Date(ano, mes - 1, dia, 12);
+    return DIAS[data.getDay()] + ', ' + dia + ' de ' + MESES[mes - 1];
+  }
+
+  function formatarTelefone(tel) {
+    let n = String(tel || '').replace(/\D/g, '');
+    if (n.startsWith('55') && (n.length === 12 || n.length === 13)) n = n.slice(2);
+    if (n.length === 11) return '(' + n.slice(0, 2) + ') ' + n.slice(2, 7) + ' ' + n.slice(7);
+    if (n.length === 10) return '(' + n.slice(0, 2) + ') ' + n.slice(2, 6) + ' ' + n.slice(6);
+    return tel || '';
+  }
+
+  function mostrarAviso(texto) {
+    const aviso = document.getElementById('aviso');
+    aviso.textContent = texto;
+    aviso.hidden = false;
+    clearTimeout(temporizadorAviso);
+    temporizadorAviso = setTimeout(() => { aviso.hidden = true; }, 3200);
+  }
+
+  async function chamar(action, extra) {
+    const cabecalhos = { 'Content-Type': 'application/json' };
+    if (token) cabecalhos.Authorization = 'Bearer ' + token;
+
+    const resposta = await fetch(API, {
+      method: 'POST',
+      headers: cabecalhos,
+      body: JSON.stringify(Object.assign({ action: action }, extra || {})),
+    });
+
+    let dados = {};
+    try { dados = await resposta.json(); } catch (erro) { dados = {}; }
+    return { status: resposta.status, dados: dados };
+  }
+
+  // ---------- telas ----------
+
+  function mostrarLogin() {
+    telaApp.hidden = true;
+    telaLogin.hidden = false;
+    document.getElementById('senha').value = '';
+  }
+
+  function mostrarApp() {
+    telaLogin.hidden = true;
+    telaApp.hidden = false;
+    document.getElementById('nome-clinica').textContent = CLINICA_NOME;
+  }
+
+  function sair() {
+    token = null;
+    localStorage.removeItem(CHAVE_TOKEN);
+    conteudo.replaceChildren();
+    mostrarLogin();
+  }
+
+  // ---------- desenho da lista ----------
+
+  function criarCartao(p, tipo) {
+    const cartao = criar('div', 'cartao');
+
+    const colunaHora = criar('div');
+    colunaHora.appendChild(criar('div', 'hora', p.horario || ''));
+    if (tipo !== 'hoje') {
+      colunaHora.appendChild(criar('div', 'data-pequena', formatarData(p.data)));
+    }
+    cartao.appendChild(colunaHora);
+
+    const info = criar('div');
+    info.appendChild(criar('div', 'nome', p.nome || 'Paciente sem nome'));
+    info.appendChild(criar('div', 'telefone', formatarTelefone(p.telefone)));
+
+    if (p.procedimento) {
+      const linha = criar('div', 'detalhe');
+      linha.appendChild(criar('strong', null, 'Procedimento: '));
+      linha.appendChild(document.createTextNode(p.procedimento));
+      info.appendChild(linha);
+    }
+
+    if (p.motivo) {
+      const linha = criar('div', 'detalhe');
+      linha.appendChild(criar('strong', null, 'Motivo: '));
+      linha.appendChild(document.createTextNode(p.motivo));
+      info.appendChild(linha);
+    }
+
+    const selos = criar('div', 'selos');
+    if (tipo === 'pendente') selos.appendChild(criar('span', 'selo selo-pendente', 'Falta marcar'));
+    if (p.jaEPaciente) selos.appendChild(criar('span', 'selo selo-paciente', 'Já é paciente'));
+    if (p.status === 'atendido') selos.appendChild(criar('span', 'selo selo-atendido', 'Atendido'));
+    if (p.status === 'faltou') selos.appendChild(criar('span', 'selo selo-faltou', 'Faltou'));
+    if (selos.children.length > 0) info.appendChild(selos);
+
+    cartao.appendChild(info);
+
+    if (tipo === 'pendente' || tipo === 'hoje') {
+      const acoes = criar('div', 'acoes');
+      acoes.appendChild(criarBotao('Compareceu', 'botao botao-ok', p.telefone, 'atendido', 'Marcado como atendido'));
+      acoes.appendChild(criarBotao('Faltou', 'botao botao-falta', p.telefone, 'faltou', 'Marcado como falta'));
+      cartao.appendChild(acoes);
+    }
+
+    if (tipo === 'recente') {
+      const acoes = criar('div', 'acoes');
+      acoes.appendChild(criarBotao('Desfazer', 'botao botao-desfazer', p.telefone, 'agendado', 'Marcação desfeita'));
+      cartao.appendChild(acoes);
+    }
+
+    const numero = String(p.telefone || '').replace(/\D/g, '');
+    if (numero) {
+      const link = criar('a', 'falar', 'Falar com o paciente');
+      link.href = 'https://wa.me/' + numero;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      cartao.appendChild(link);
+    }
+
+    return cartao;
+  }
+
+  function criarBotao(texto, classe, telefone, resultado, mensagemOk) {
+    const botao = criar('button', classe, texto);
+    botao.type = 'button';
+    botao.addEventListener('click', () => marcar(botao, telefone, resultado, mensagemOk));
+    return botao;
+  }
+
+  function criarSecao(titulo, ajuda, lista, tipo, textoVazio, alerta) {
+    if (lista.length === 0 && !textoVazio) return null;
+
+    const secao = criar('section', 'secao');
+    const cabeca = criar('div', 'secao-cabeca');
+    cabeca.appendChild(criar('h2', 'secao-titulo', titulo));
+    cabeca.appendChild(criar('span', alerta ? 'contador alerta' : 'contador', String(lista.length)));
+    secao.appendChild(cabeca);
+
+    if (ajuda) secao.appendChild(criar('p', 'secao-ajuda', ajuda));
+
+    if (lista.length === 0) {
+      secao.appendChild(criar('p', 'vazio-secao', textoVazio));
+    } else {
+      lista.forEach((p) => secao.appendChild(criarCartao(p, tipo)));
+    }
+
+    return secao;
+  }
+
+  function desenhar(d) {
+    conteudo.replaceChildren();
+
+    const total = d.pendentes.length + d.deHoje.length + d.proximos.length + d.recentes.length;
+
+    if (total === 0) {
+      const vazio = criar('div', 'vazio-geral');
+      vazio.appendChild(criar('h2', null, 'Nenhum agendamento por enquanto'));
+      vazio.appendChild(criar('p', null, 'Quando a Wanessa marcar uma consulta, ela aparece aqui.'));
+      conteudo.appendChild(vazio);
+      return;
+    }
+
+    const secoes = [
+      criarSecao(
+        'Falta marcar',
+        'Consultas que já passaram. Toque em Compareceu ou Faltou pra manter a agenda em dia.',
+        d.pendentes, 'pendente', null, true
+      ),
+      criarSecao('Hoje', null, d.deHoje, 'hoje', 'Nenhuma consulta marcada pra hoje.', false),
+      criarSecao('Próximos dias', null, d.proximos, 'proximo', null, false),
+      criarSecao(
+        'Marcados recentemente',
+        'Marcou errado? Toque em Desfazer.',
+        d.recentes, 'recente', null, false
+      ),
+    ];
+
+    secoes.forEach((secao) => { if (secao) conteudo.appendChild(secao); });
+  }
+
+  // ---------- ações ----------
+
+  async function carregar() {
+    if (carregando || !token) return;
+    carregando = true;
+
+    try {
+      const { status, dados } = await chamar('listar');
+
+      if (status === 401) {
+        sair();
+        return;
+      }
+
+      if (status !== 200) {
+        mostrarAviso('Não consegui atualizar agora');
+        return;
+      }
+
+      desenhar(dados);
+      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('atualizado').textContent = 'Atualizado às ' + hora;
+    } catch (erro) {
+      mostrarAviso('Sem conexão, tente de novo');
+    } finally {
+      carregando = false;
+    }
+  }
+
+  async function marcar(botao, telefone, resultado, mensagemOk) {
+    const textoOriginal = botao.textContent;
+    botao.disabled = true;
+    botao.textContent = 'Salvando...';
+
+    try {
+      const { status } = await chamar('marcar', { telefone: telefone, resultado: resultado });
+
+      if (status === 401) {
+        sair();
+        return;
+      }
+
+      if (status === 200) {
+        mostrarAviso(mensagemOk);
+      } else if (status === 409) {
+        mostrarAviso('Alguém já marcou esse agendamento');
+      } else {
+        mostrarAviso('Não deu certo, tente de novo');
+        botao.disabled = false;
+        botao.textContent = textoOriginal;
+        return;
+      }
+
+      await carregar();
+    } catch (erro) {
+      mostrarAviso('Sem conexão, tente de novo');
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
+  }
+
+  document.getElementById('form-login').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+
+    const botao = document.getElementById('botao-entrar');
+    const erro = document.getElementById('erro-login');
+    erro.hidden = true;
+    botao.disabled = true;
+    botao.textContent = 'Entrando...';
+
+    try {
+      token = null;
+      const { status, dados } = await chamar('login', { senha: document.getElementById('senha').value });
+
+      if (status === 200 && dados.token) {
+        token = dados.token;
+        localStorage.setItem(CHAVE_TOKEN, token);
+        mostrarApp();
+        await carregar();
+      } else {
+        erro.textContent = 'Senha incorreta, tente de novo.';
+        erro.hidden = false;
+      }
+    } catch (falha) {
+      erro.textContent = 'Sem conexão, tente de novo.';
+      erro.hidden = false;
+    } finally {
+      botao.disabled = false;
+      botao.textContent = 'Entrar';
+    }
+  });
+
+  document.getElementById('botao-atualizar').addEventListener('click', carregar);
+  document.getElementById('botao-sair').addEventListener('click', sair);
+
+  // Atualiza sozinho a cada 2 minutos, e quando a pessoa volta pra aba.
+  setInterval(() => { if (token && !document.hidden) carregar(); }, 120000);
+  document.addEventListener('visibilitychange', () => { if (token && !document.hidden) carregar(); });
+
+  if (token) {
+    mostrarApp();
+    carregar();
+  } else {
+    mostrarLogin();
+  }
+</script>
+
+</body>
+</html>
